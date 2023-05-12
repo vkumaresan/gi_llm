@@ -21,6 +21,6 @@ try:
         )
 
     # configure text area to populate with current state of summary
-    output_text = st.text_area(label='Recommended Screening Colonoscopy Interval:', value='', height=250)
+    output_text = st.text_area(label='Recommended Screening Colonoscopy Interval:', value=st.session_state["summary"], height=250)
 except:
     st.write('There was an error =)')
