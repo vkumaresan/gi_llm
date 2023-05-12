@@ -34,7 +34,7 @@ Rule 14: If there are any number of hyperplastic polyps greater than or equal to
 `
 
 Provide the recommended colonoscopy screening interval for the input text below, delimited by triple 
-backticks, in at most 30 words. Also print the rules that were used to calculate this recommendation.
+backticks, in at most 30 words. Also print the exact wording of the rule that was used to calculate this recommendation, without the rule number and name.
 
 Input text: ```{prompt}```"""
     try:
