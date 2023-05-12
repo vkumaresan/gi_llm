@@ -12,12 +12,14 @@ try:
 
     st.title("Colonoscopy Screening Interval Recommendation System")
 
-    input_text = st.text_area(label='Enter colonoscopy and pathology findings:', value="", height=250)
+    input_colon_text = st.text_area(label='Enter colonoscopy impression:', value="", height=250)
+
+    input_path_text = st.text_area(label='Enter pathology impression:', value="", height=250)
 
     st.button(
         "Submit",
         on_click=summarize,
-        kwargs={"prompt": input_text},
+        kwargs={"prompt": 'Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text},
         )
 
     # configure text area to populate with current state of summary
