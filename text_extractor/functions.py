@@ -34,15 +34,15 @@ Rule 14: If there are any number of hyperplastic polyps greater than or equal to
 `
 
 Provide the recommended colonoscopy screening interval for the input text below, delimited by triple 
-backticks, in at most 30 words. 
+backticks, in at most 30 words. Also print the rules that were used to calculate this recommendation.
 
 Input text: ```{prompt}```"""
     try:
-        st.session_state["summary"] = openai.Completion.create(
-            model="text-davinci-003",
-            prompt=augmented_prompt,
-            temperature=.5,
-            max_tokens=1000,
-        )["choices"][0]["text"]
+        messages = [{"role": "user", "content": augmented_prompt}]
+        st.session_state["summary"] = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            temperature=0
+        ).choices[0].message["content"]
     except:
-        st.write('There was an eror =(')
+        st.write('There was an error =(')
