@@ -3,7 +3,11 @@ import os
 import streamlit as st
 from text_extractor.functions import summarize_using_gpt, summarize_using_palm
 
+# GPT
 openai.api_key = os.getenv('OPENAI_KEY')
+
+# Google
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'experimenting-297418-9266c3a6d9ee.json'
 
 # initialize state variable 
 if "summary" not in st.session_state:
