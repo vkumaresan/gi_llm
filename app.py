@@ -30,7 +30,20 @@ st.button(
 
 # configure text area to populate with current state of summary
 st.subheader('Polyp Summary')
-st.dataframe(st.session_state["polyps_table"])
+# CSS to inject contained in a string
+hide_table_row_index = """
+            <style>
+            thead tr th:first-child {display:none}
+            tbody th {display:none}
+            </style>
+            """
+
+# Inject CSS with Markdown
+st.markdown(hide_table_row_index, unsafe_allow_html=True)
+
+# Display a static table
+st.table(st.session_state["polyps_table"])
+
 output_text = st.text_area(label='Recommended Screening Colonoscopy Interval:', value=st.session_state["summary"], height=250)
 
 # Download as CSV
