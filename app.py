@@ -2,12 +2,16 @@ import openai
 import os
 import streamlit as st
 from text_extractor.functions import *
+import gspread
 
 # GPT
 openai.api_key = os.getenv('OPENAI_KEY')
 
 # Google
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'experimenting-297418-9266c3a6d9ee.json'
+#os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'experimenting-297418-9266c3a6d9ee.json'
+
+# Google Sheets for export
+gc = gspread.service_account(filename='experimenting-297418-fe9386899f89.json')
 
 # initialize state variable 
 if "summary" not in st.session_state:
@@ -83,6 +87,19 @@ st.table(st.session_state["polyps_table"])
 
 # Display output recommendation
 output_text = st.text_area(label='Recommended Screening Colonoscopy Interval', value=st.session_state["summary"], height=250)
+
+# Export data to Google Sheet
+if output_text != '':
+    sh = gc.open_by_key('19KBn8TMXqluLF1f8QSpc_wWqSXrv1W3tga4qitmQJiU')
+    worksheet = sh.get_worksheet(0)
+    # Get current values from Google Sheet and append on output table
+    df_sheet = pd.DataFrame(worksheet.get_all_records())
+    data = {'Colonoscopy Text': [input_colon_text], 
+            'Pathology Text': [input_path_text], 
+            'Recommended Interval': [output_text]}
+    df_app = pd.DataFrame(data=data)
+    df_combined = pd.concat([df_sheet, df_app])
+    worksheet.update([df_combined.columns.values.tolist()] + df_combined.values.tolist())
 
 # Button to allow user to download output table as CSV
 csv = st.session_state["polyps_table"].to_csv(index=False).encode('utf-8')
