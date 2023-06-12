@@ -44,7 +44,7 @@ hide_table_row_index = """
 # Inject CSS with Markdown
 st.markdown(hide_table_row_index, unsafe_allow_html=True)
 
-st.title("Colonoscopy Screening Interval Recommendation System")
+st.title("GI Calc")
 
 
 st.markdown("This tool allows you to enter findings from colonoscopy and pathology reports and receive the guideline-recommended screening interval for that patient.")
