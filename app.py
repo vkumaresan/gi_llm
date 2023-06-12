@@ -4,6 +4,7 @@ import streamlit as st
 from text_extractor.functions import *
 import gspread
 
+
 # GPT
 openai.api_key = os.getenv('OPENAI_KEY')
 
@@ -75,7 +76,7 @@ with col2:
 
 st.button(
     "Submit",
-    on_click=summarize_using_gpt_two_prompt,
+    on_click=summarize_using_gpt_JSON,
     kwargs={"prompt": 'Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text},
     )
 
