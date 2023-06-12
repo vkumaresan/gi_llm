@@ -5,7 +5,11 @@ from vertexai.preview.language_models import TextGenerationModel
 import json
 import re
 import pandas as pd
-
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from langchain.output_parsers import ResponseSchema
+from langchain.output_parsers import StructuredOutputParser
+from thefuzz import fuzz
 
 ##### GPT
 def summarize_using_gpt_two_prompt(prompt):
@@ -80,6 +84,66 @@ Input text: ```{prompt}```
             polyp_df = pd.DataFrame.from_dict(df['polyps'][i], orient='index').T
             final_polyps_output = pd.concat([final_polyps_output, polyp_df])
         st.session_state["polyps_table"] = final_polyps_output
+    except:
+        st.write('There was an error')
+
+# Use LLM to create JSON
+size_schema = ResponseSchema(name="size",
+                             description="What was the size of the polyp?\
+                             Extract the numerical value and the unit.")
+location_schema = ResponseSchema(name="location",
+                                      description="Where was the polyp found?\
+                                      Output the value as a string.")
+type_schema = ResponseSchema(name="type",
+                                    description="What was the type of the polyp?\
+                                    Output the value as a string.")
+histology_schema = ResponseSchema(name="histology",
+                                    description="What was the histology of the polyp? \
+                                    Output as a string. Histology will either be high-grade dysplasia, \
+                                    low-grade dysplasia, dysplasia, villous, tubulovillous, or not applicable.")
+response_schemas = [size_schema, 
+                    location_schema,
+                    type_schema,
+                    histology_schema]
+output_parser = StructuredOutputParser.from_response_schemas(response_schemas)
+format_instructions = output_parser.get_format_instructions()
+
+def summarize_using_gpt_JSON(prompt):
+    prompt_template = """\
+For the following text, extract the following information for each polyp:
+
+size: Extract the size of the polyp \
+and output the number and units.
+
+location: Extract the location of the polyp\
+and output as a string.
+
+type: Extract the type of the polyp\
+and output as a string.
+
+histology: Extract the grade of the dysplasia \
+and output as a string.
+
+text: {text}
+
+{format_instructions}
+"""
+
+    final_prompt = ChatPromptTemplate.from_template(template=prompt_template)
+
+    final_prompt = final_prompt.format_messages(text=prompt, 
+                                format_instructions=format_instructions)
+    try:
+        messages = [{"role": "user", "content": final_prompt[0].content}]
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            temperature=0
+        ).choices[0].message["content"]
+        # Get clinical recommendation from JSON using helper function
+        st.session_state["summary"] = clinical_rec_calc(response)
+        # Get polyp table
+        st.session_state["polyps_table"] = polyp_table_formatter(response)
     except:
         st.write('There was an error')
 
@@ -220,3 +284,174 @@ def summarize_using_palm_two_prompt(prompt):
 ##### Other processing functions
 def export_polyp_findings(polyps_table):
     polyps_table.to_csv(index=False)
+
+def clinical_rec_calc(json_response):
+    # Parse JSON and use rules to determine final interval
+    # Initialize variables
+    adenoma_count = 0
+    hyperplastic_count = 0
+    sessile_count = 0
+    traditional_count = 0
+    greater_than_10mm_count_adenoma = 0
+    greater_than_10mm_count_hyperplastic = 0
+    greater_than_10mm_count_sessile = 0
+    adenoma_histology_count = 0
+    sessile_histology_count = 0
+
+    histology_types_adenoma = ['high-grade', 'villous', 'tubulovillous']
+    histology_types_sessile = ['high-grade', 'low-grade', 'dysplasia', 'villous', 'tubulovillous']
+    # Get JSONs
+    matches = re.findall('\{(?:[^{}])*\}', json_response.replace('\n', '').replace('\t', ''))
+    for match in matches:
+        #print(match)
+        polyp_dict = output_parser.parse(match)
+
+        ### Extract variables and add to list
+        polyp_size = polyp_dict.get('size')
+        polyp_location = polyp_dict.get('size').lower()
+        polyp_type = polyp_dict.get('type').lower()
+        polyp_histology = polyp_dict.get('histology').lower()
+
+        # Adenoma
+        if fuzz.partial_token_sort_ratio("adenoma", polyp_type) > 50:
+            # check for traditional
+            if fuzz.partial_token_sort_ratio("traditional", polyp_type) > 50:
+                traditional_count += 1
+            adenoma_count += 1
+            # >= 10mm 
+            sizes = [int(i) for i in polyp_size.split() if i.isdigit()]
+            for size in sizes:
+                if size >= 10:
+                    greater_than_10mm_count_adenoma += 1
+                # cm
+            if 'cm' in polyp_size:
+                greater_than_10mm_count_adenoma += 1  
+            # histology
+            for t in histology_types_adenoma:
+                if (fuzz.partial_token_sort_ratio(t, polyp_type) > 75) or (fuzz.partial_token_sort_ratio(t, polyp_histology) > 75):
+                    adenoma_histology_count += 1
+
+        # Hyperplastic
+        if fuzz.partial_token_sort_ratio("hyperplastic", polyp_type) > 50:
+            hyperplastic_count += 1
+            # >= 10mm 
+            sizes = [int(i) for i in polyp_size.split() if i.isdigit()]
+            for size in sizes:
+                if size >= 10:
+                    greater_than_10mm_count_hyperplastic += 1
+                # cm
+            if 'cm' in polyp_size:
+                greater_than_10mm_count_hyperplastic += 1
+        # Sessile
+        if fuzz.partial_token_sort_ratio("sessile", polyp_type) > 50:
+            sessile_count += 1
+            # >= 10mm 
+            sizes = [int(i) for i in polyp_size.split() if i.isdigit()]
+            for size in sizes:
+                if size >= 10:
+                    greater_than_10mm_count_sessile += 1
+                # cm
+            if 'cm' in polyp_size:
+                greater_than_10mm_count_sessile += 1
+            for t in histology_types_sessile:
+                if (fuzz.partial_token_sort_ratio(t, polyp_type) > 50) or (fuzz.partial_token_sort_ratio(t, polyp_histology) > 50):
+                    # add if any dysplasia
+                    sessile_histology_count += 1
+        
+    # Calculate clinical recommendation
+    clinical_recommendation = []
+    # Adenoma Loop
+    if adenoma_count >= 1:
+        if greater_than_10mm_count_adenoma >= 1:
+            clinical_recommendation.append('3 years')
+        elif adenoma_count > 10:
+            clinical_recommendation.append('1 year')
+        else:
+            if adenoma_count >= 5:
+                clinical_recommendation.append('3 years')
+            elif adenoma_count >= 3:
+                clinical_recommendation.append('3-5 years')
+            else:
+                clinical_recommendation.append('7-10 years')
+        if adenoma_histology_count >= 1:
+            clinical_recommendation.append('3 years')
+    # Hyperplastic Loop
+    if hyperplastic_count >= 1:
+        if greater_than_10mm_count_hyperplastic >= 1:
+            clinical_recommendation.append('3-5 years')
+        else:
+            if hyperplastic_count < 20:
+                clinical_recommendation.append('10 years')
+
+    # SSP Loop
+    if sessile_count >= 1:
+        if greater_than_10mm_count_sessile >= 1:
+            clinical_recommendation.append('3 years')
+        else:
+            if sessile_count >= 5:
+                clinical_recommendation.append('3 years')
+            elif sessile_count >= 3:
+                clinical_recommendation.append('3-5 years') 
+            else:
+                clinical_recommendation.append('5-10 years')
+        if sessile_histology_count >= 1:
+            clinical_recommendation.append('3 years')
+    # Traditional Loop
+    if traditional_count >= 1:
+        clinical_recommendation.append('3 years')
+    # Choose most conservative option
+    final_rec = ''
+    if len(clinical_recommendation) > 1:
+        for rec in clinical_recommendation:
+            if rec == '1 year':
+                final_rec = '1 year'
+            elif rec == '3 years':
+                if final_rec == '1 year':
+                    continue
+                else:
+                    final_rec = '3 years'
+            elif rec == '3-5 years':
+                if (final_rec == '1 year') | (final_rec == '3 years'):
+                    continue
+                else:
+                    final_rec = '3-5 years'
+            elif rec == '5-10 years':
+                if (final_rec == '1 year') | (final_rec == '3 years') | (final_rec == '3-5 years'):
+                    continue
+                else:
+                    final_rec = '5-10 years'
+            elif rec == '7-10 years':
+                if (final_rec == '1 year') | (final_rec == '3 years') | (final_rec == '3-5 years') | (final_rec == '5-10 years'):
+                    continue
+                else:
+                    final_rec = '7-10 years'
+            elif rec == '10 years':
+                if (final_rec == '1 year') | (final_rec == '3 years') | (final_rec == '3-5 years') | (final_rec == '5-10 years') | (final_rec == '7-10 years'):
+                    continue
+                else:
+                    final_rec = '10 years'
+    else:
+        if len(clinical_recommendation) == 0:
+            final_rec = '10 years'
+        else:
+            final_rec = clinical_recommendation[0]
+    return final_rec
+
+def polyp_table_formatter(json_response):
+    final_polyps_output = pd.DataFrame()
+    matches = re.findall('\{(?:[^{}])*\}', json_response.replace('\n', '').replace('\t', ''))
+    i=0
+    for match in matches:
+        #print(match)
+        polyp_dict = output_parser.parse(match)
+
+        ### Extract variables and add to list
+        final_polyps_output.at[i, 'Polyp Size'] = polyp_dict.get('size')
+        final_polyps_output.at[i, 'Polyp Location'] = polyp_dict.get('location').lower()
+        final_polyps_output.at[i, 'Polyp Type'] = polyp_dict.get('type').lower()
+        final_polyps_output.at[i, 'Polyp Histology'] = polyp_dict.get('histology').lower()
+
+        i+=1
+    return final_polyps_output
+
+        
