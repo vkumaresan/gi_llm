@@ -3,7 +3,7 @@ import os
 import streamlit as st
 from text_extractor.functions import *
 import gspread
-
+from PIL import Image
 
 # GPT
 openai.api_key = os.getenv('OPENAI_KEY')
@@ -53,15 +53,38 @@ with st.sidebar:
     st.markdown("This is an experimental tool that is still in development, and as such, results should be taken with caution as adjustments and improvements are still being made.")
     st.markdown("IMPORTANT: At this moment, we ask that you do not enter actual patient health information in this tool. Instead, below are examples of synthetic data that you can modify and test in this tool.")
 
-    example_input_text = pd.DataFrame([['A 3mm polyp in the ascending colon.', 'Tubular adenoma with low-grade dysplasia.'],
-                                    ['Two 6mm polyps in the transverse colon. A 9mm polyp in the rectum. ', 'Transverse colon: 1st polyp: Sessile serrated polyp. 2nd polyp: Sessile serrated polyp. Rectum: Sessile serrated polyp.'],
-                                    ['A 10mm polyp in the sigmoid colon. A 9mm polyp in the rectum. A 7mm polyp in the ascending colon. A 6mm polyp in the transverse colon. A 5mm polyp in the descending colon.', 'Sigmoid colon - Sessile serrated polyp. Rectum - Sessile serrated polyp. Ascending colon - Sessile serrated polyp. Transverse colon - Sessile serrated polyp. Descending colon - Sessile serrated polyp.']], 
+    example_input_text = pd.DataFrame([['A solitary 5 mm polyp was excised using a hot biopsy forceps from the cecum.', 
+                                        'Cecum: Tubular adenoma.'],
+                                    ['One 11 mm polyp was removed with a cold snare from the ascending colon. One 7 mm polyp was removed from the sigmoid colon. One 9 mm polyp was removed from the rectum.', 
+                                     'Ascending Colon: Tubular adenoma. Sigmoid Colon: Tubular adenoma. Rectum: Tubular adenoma.'],
+                                    ['Two polyps were removed; one 5 mm polyp from the cecum, and a 9 mm polyp from the rectum.', 
+                                     'Cecum: tubular adenoma. Rectum: hyperplastic polyp.']], 
                                     columns=['Example Colonoscopy Text', 'Example Pathology Text'])
     st.table(example_input_text)
 
 with st.expander("Evidence"):
-    st.write("""
-        TBD
+    st.markdown("""
+        Colonoscopies are routinely performed for colorectal cancer (CRC) screening between the ages of 45-75 as recommended by the United States Preventative Services Task Force (USPSTF)¹. Postprocedure, colonoscopists are expected to provide follow-up recommendations based on the number, size, and type of polyp(s). 
+For average risk patients, these risk-stratified repeat colonoscopy intervals after biopsy of non-cancerous polyps follow an algorithmic approach as outlined by Gupta et al.² 
+
+¹https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/colorectal-cancer-screening
+
+²Gupta S, Lieberman D, Anderson JC, Burke CA, Dominitz JA, Kaltenbach T, Robertson DJ, Shaukat A, Syngal S, Rex DK. Recommendations for Follow-Up After Colonoscopy and Polypectomy: A Consensus Update by the US Multi-Society Task Force on Colorectal Cancer. Am J Gastroenterol. 2020 Mar;115(3):415-434. doi: 10.14309/ajg.0000000000000544. PMID: 32039982; PMCID: PMC7393611.
+    """)
+
+    image = Image.open('gupta_figure.jpeg')
+    image = image.resize((600, 400))
+
+    st.image(image)
+with st.expander("Clinical Assumptions"):
+    st.markdown("""
+    1. No personal history/increased risk of colorectal cancer 
+    2. No family history/increased risk of colorectal cancer 
+    3. High Quality Colonoscopy: 
+        * Complete to cecum 
+        * Adequate Bowel prep to detect polyps > 5 mm 
+        * Adequate colonoscopist adenoma detection rate 
+        * Complete polyp resection 
     """)
 
 with st.expander("Methods"):
@@ -113,6 +136,7 @@ if output_text != '':
             'Recommended Interval': [output_text]}
     df_app = pd.DataFrame(data=data)
     df_combined = pd.concat([df_sheet, df_app])
+    df_combined = df_combined.fillna('')
     worksheet.update([df_combined.columns.values.tolist()] + df_combined.values.tolist())
 
 # Button to allow user to download output table as CSV
