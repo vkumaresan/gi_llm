@@ -127,6 +127,8 @@ and output as a string.
 text: {text}
 
 {format_instructions}
+
+If multiple polyps are found in a location, output a json for each polyp.
 """
 
     final_prompt = ChatPromptTemplate.from_template(template=prompt_template)
@@ -440,18 +442,36 @@ def clinical_rec_calc(json_response):
 def polyp_table_formatter(json_response):
     final_polyps_output = pd.DataFrame()
     matches = re.findall('\{(?:[^{}])*\}', json_response.replace('\n', '').replace('\t', ''))
+    #print(matches)
     i=0
+    polyp_count = 0
+    polyp_size = ''
+    polyp_location = ''
+    polyp_type = ''
+    polyp_histology = ''
+
     for match in matches:
-        #print(match)
         polyp_dict = output_parser.parse(match)
 
-        ### Extract variables and add to list
-        final_polyps_output.at[i, 'Polyp Size'] = polyp_dict.get('size')
-        final_polyps_output.at[i, 'Polyp Location'] = polyp_dict.get('location').lower()
-        final_polyps_output.at[i, 'Polyp Type'] = polyp_dict.get('type').lower()
-        final_polyps_output.at[i, 'Polyp Histology'] = polyp_dict.get('histology').lower()
+        # check against previous polyp to see if we need to append a new row or add to previous count
+        if ((polyp_dict.get('size') == polyp_size) & (polyp_dict.get('location') == polyp_location) & (polyp_dict.get('type') == polyp_type) & (polyp_dict.get('histology') == polyp_histology)):
+            polyp_count += 1
+            final_polyps_output.at[i, 'Polyp Count'] = str(int(polyp_count))
+        else:
+            i+=1
+            polyp_count = 1
+            final_polyps_output.at[i, 'Polyp Count'] = str(int(polyp_count))
+            final_polyps_output.at[i, 'Polyp Size'] = polyp_dict.get('size')
+            final_polyps_output.at[i, 'Polyp Location'] = polyp_dict.get('location').lower()
+            final_polyps_output.at[i, 'Polyp Type'] = polyp_dict.get('type').lower()
+            final_polyps_output.at[i, 'Polyp Histology'] = polyp_dict.get('histology').lower()
+        
 
-        i+=1
+        ### Save variables
+        polyp_size = polyp_dict.get('size')
+        polyp_location = polyp_dict.get('location').lower()
+        polyp_type = polyp_dict.get('type').lower()
+        polyp_histology = polyp_dict.get('histology').lower()
     return final_polyps_output
 
         
