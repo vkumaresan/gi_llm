@@ -62,7 +62,7 @@ st.markdown("""
     </style>""", unsafe_allow_html=True)
 
 
-st.title("GI Calc")
+st.title("Colonoscopy Screening Interval Calculator")
 
 
 st.markdown("This tool allows you to enter findings from colonoscopy and pathology reports and receive the guideline-recommended screening interval for that patient.")
