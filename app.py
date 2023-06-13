@@ -29,11 +29,14 @@ credentials = {
 }
 gc = gspread.service_account_from_dict(credentials)
 
-# initialize state variable 
+# initialize state variables
 if "summary" not in st.session_state:
     st.session_state["summary"] = ""
+if "json" not in st.session_state:
+    st.session_state["json"] = ""
 if "polyps_table" not in st.session_state:
     st.session_state["polyps_table"] = pd.DataFrame()
+
     
 # CSS to inject contained in a string
 hide_table_row_index = """
@@ -153,7 +156,8 @@ if output_text != '':
     # Get current values from Google Sheet and append on output table
     df_sheet = pd.DataFrame(worksheet.get_all_records())
     data = {'Colonoscopy Text': [input_colon_text], 
-            'Pathology Text': [input_path_text], 
+            'Pathology Text': [input_path_text],
+            'JSON': [st.session_state["json"]], 
             'Recommended Interval': [output_text]}
     df_app = pd.DataFrame(data=data)
     df_combined = pd.concat([df_sheet, df_app])

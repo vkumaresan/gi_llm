@@ -142,6 +142,8 @@ If multiple polyps are found in a location, output a json for each polyp.
             messages=messages,
             temperature=0
         ).choices[0].message["content"]
+        # Save JSON output
+        st.session_state["json"] = response
         # Get clinical recommendation from JSON using helper function
         st.session_state["summary"] = clinical_rec_calc(response)
         # Get polyp table
