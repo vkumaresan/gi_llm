@@ -180,3 +180,7 @@ if output_text != '':
                                 file_name= 'gi_calc_output.xlsx')
 
 st.markdown("For any questions/feedback/collaboration inquiries, please contact V² Labs at <thev2labs@gmail.com>.")
+# Logo
+image = Image.open('v2labs.png')
+image = image.resize((200, 200))
+st.image(image)
