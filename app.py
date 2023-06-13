@@ -4,6 +4,8 @@ import streamlit as st
 from text_extractor.functions import *
 import gspread
 from PIL import Image
+from io import BytesIO
+from pyxlsb import open_workbook as open_xlsb
 
 # GPT
 openai.api_key = os.getenv('OPENAI_KEY')
@@ -43,6 +45,19 @@ hide_table_row_index = """
 
 # Inject CSS with Markdown
 st.markdown(hide_table_row_index, unsafe_allow_html=True)
+#Remove whitespace from the top of the page and sidebar
+st.markdown("""
+    <style>
+      section[data-testid="stSidebar"][aria-expanded="true"]{
+        height: 80% 
+        width: 50% !important;
+      }
+      section[data-testid="stSidebar"][aria-expanded="false"]{
+        height: 80% 
+        width: 50% !important;
+      }
+    </style>""", unsafe_allow_html=True)
+
 
 st.title("GI Calc")
 
@@ -50,8 +65,8 @@ st.title("GI Calc")
 st.markdown("This tool allows you to enter findings from colonoscopy and pathology reports and receive the guideline-recommended screening interval for that patient.")
 
 with st.sidebar:
-    st.markdown("This is an experimental tool that is still in development, and as such, results should be taken with caution as adjustments and improvements are still being made.")
-    st.markdown("IMPORTANT: At this moment, we ask that you do not enter actual patient health information in this tool. Instead, below are examples of synthetic data that you can modify and test in this tool.")
+    st.sidebar.markdown("This is an experimental tool that is still in development, and as such, results should be taken with caution as adjustments and improvements are still being made.")
+    st.sidebar.markdown("IMPORTANT: At this moment, we ask that you do not enter actual patient health information in this tool. Instead, below are examples of synthetic data that you can modify and test in this tool.")
 
     example_input_text = pd.DataFrame([['A solitary 5 mm polyp was excised using a hot biopsy forceps from the cecum.', 
                                         'Cecum: Tubular adenoma.'],
@@ -65,12 +80,18 @@ with st.sidebar:
 with st.expander("Evidence"):
     st.markdown("""
         Colonoscopies are routinely performed for colorectal cancer (CRC) screening between the ages of 45-75 as recommended by the United States Preventative Services Task Force (USPSTF)¹. Postprocedure, colonoscopists are expected to provide follow-up recommendations based on the number, size, and type of polyp(s). 
-For average risk patients, these risk-stratified repeat colonoscopy intervals after biopsy of non-cancerous polyps follow an algorithmic approach as outlined by Gupta et al.² 
+For average risk patients, these risk-stratified repeat colonoscopy intervals after biopsy of non-cancerous polyps follow an algorithmic approach as outlined by Gupta et al.² """)
+    st.markdown("""
+<style>
+.small-font {
+    font-size:12px;
+}
+</style>
+""", unsafe_allow_html=True)
 
-¹https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/colorectal-cancer-screening
-
-²Gupta S, Lieberman D, Anderson JC, Burke CA, Dominitz JA, Kaltenbach T, Robertson DJ, Shaukat A, Syngal S, Rex DK. Recommendations for Follow-Up After Colonoscopy and Polypectomy: A Consensus Update by the US Multi-Society Task Force on Colorectal Cancer. Am J Gastroenterol. 2020 Mar;115(3):415-434. doi: 10.14309/ajg.0000000000000544. PMID: 32039982; PMCID: PMC7393611.
-    """)
+    st.markdown("""<p class="small-font">¹https://www.uspreventiveservicestaskforce.org/uspstf/recommendation/colorectal-cancer-screening</p>""", unsafe_allow_html=True)
+    st.markdown("""<p class="small-font">²Gupta S, Lieberman D, Anderson JC, Burke CA, Dominitz JA, Kaltenbach T, Robertson DJ, Shaukat A, Syngal S, Rex DK. Recommendations for Follow-Up After Colonoscopy and Polypectomy: A Consensus Update by the US Multi-Society Task Force on Colorectal Cancer. Am J Gastroenterol. 2020 Mar;115(3):415-434. doi: 10.14309/ajg.0000000000000544. PMID: 32039982; PMCID: PMC7393611.
+    </p>""", unsafe_allow_html=True)
 
     image = Image.open('gupta_figure.jpeg')
     image = image.resize((600, 400))
@@ -106,9 +127,9 @@ st.divider()
 col1, col2 = st.columns(2)
 
 with col1:
-    input_colon_text = st.text_area(label='Enter colonoscopy impression:', value="", height=250)
+    input_colon_text = st.text_area(label='Enter colonoscopy impression:', value="", height=150)
 with col2:
-    input_path_text = st.text_area(label='Enter pathology impression:', value="", height=250)
+    input_path_text = st.text_area(label='Enter pathology impression:', value="", height=150)
 
 st.button(
     "Submit",
@@ -123,7 +144,7 @@ st.markdown('Polyp Summary')
 st.table(st.session_state["polyps_table"])
 
 # Display output recommendation
-output_text = st.text_area(label='Recommended Screening Colonoscopy Interval', value=st.session_state["summary"], height=250)
+output_text = st.text_area(label='Recommended Screening Colonoscopy Interval', value=st.session_state["summary"], height=50)
 
 # Export data to Google Sheet
 if output_text != '':
@@ -145,22 +166,17 @@ if output_text != '':
     polyp_summary = st.session_state["polyps_table"]
 
     def data_exporter(polyp_summary, screening_information):
-        with pd.ExcelWriter("gi_calc_output.xlsx") as writer:
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             polyp_summary.to_excel(writer, sheet_name="Polyp Summary", index=False)
             df_app.to_excel(writer, sheet_name="Screening Information", index=False)
-        print('gi_calc_output.xlsx downloaded')
-    st.button(
-    "Download findings and screening information",
-    on_click=data_exporter,
-    kwargs={"polyp_summary": polyp_summary,
-            "screening_information": df_app}
-    )
-    # st.download_button(
-    # "Download Polyp Findings as CSV file",
-    # csv,
-    # "file.csv",
-    # "text/csv",
-    # key='download-csv'
-    # )
+            writer.close()
+            processed_data = output.getvalue()
+        return processed_data
+    
+    df_xlsx = data_exporter(polyp_summary, df_app)
+    st.download_button(label='📥 Download findings and screening information',
+                                data=df_xlsx ,
+                                file_name= 'gi_calc_output.xlsx')
 
 st.markdown("For any questions/feedback/collaboration inquiries, please contact V² Labs at <thev2labs@gmail.com>.")
