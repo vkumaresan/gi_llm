@@ -66,7 +66,7 @@ st.markdown("This tool allows you to enter findings from colonoscopy and patholo
 
 with st.sidebar:
     st.sidebar.markdown("This is an experimental tool that is still in development, and as such, results should be taken with caution as adjustments and improvements are still being made.")
-    st.sidebar.markdown("IMPORTANT: At this moment, we ask that you do not enter actual patient health information in this tool. Instead, below are examples of synthetic data that you can modify and test in this tool.")
+    st.sidebar.markdown("IMPORTANT: At this moment, we ask that you do not enter actual patient health information in this tool. Instead, below are examples of synthetic data that you can modify and test.")
 
     example_input_text = pd.DataFrame([['A solitary 5 mm polyp was excised using a hot biopsy forceps from the cecum.', 
                                         'Cecum: Tubular adenoma.'],
