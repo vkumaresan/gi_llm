@@ -140,6 +140,8 @@ if output_text != '':
     worksheet.update([df_combined.columns.values.tolist()] + df_combined.values.tolist())
 
     # Button to allow user to download output table as CSV
+    if "polyps_table" not in st.session_state:
+        st.session_state["polyps_table"] = pd.DataFrame() 
     csv = st.session_state["polyps_table"].to_csv(index=False).encode('utf-8')
 
     st.download_button(
