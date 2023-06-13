@@ -139,15 +139,15 @@ if output_text != '':
     df_combined = df_combined.fillna('')
     worksheet.update([df_combined.columns.values.tolist()] + df_combined.values.tolist())
 
-# Button to allow user to download output table as CSV
-csv = st.session_state["polyps_table"].to_csv(index=False).encode('utf-8')
+    # Button to allow user to download output table as CSV
+    csv = st.session_state["polyps_table"].to_csv(index=False).encode('utf-8')
 
-st.download_button(
-   "Download Polyp Findings as CSV file",
-   csv,
-   "file.csv",
-   "text/csv",
-   key='download-csv'
-)
+    st.download_button(
+    "Download Polyp Findings as CSV file",
+    csv,
+    "file.csv",
+    "text/csv",
+    key='download-csv'
+    )
 
 st.markdown("For any questions/feedback/collaboration inquiries, please contact V² Labs at <thev2labs@gmail.com>.")
