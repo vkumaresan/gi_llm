@@ -141,15 +141,26 @@ if output_text != '':
 
     # Button to allow user to download output table as CSV
     if "polyps_table" not in st.session_state:
-        st.session_state["polyps_table"] = pd.DataFrame() 
-    csv = st.session_state["polyps_table"].to_csv(index=False).encode('utf-8')
+        st.session_state["polyps_table"] = pd.DataFrame()
+    polyp_summary = st.session_state["polyps_table"]
 
-    st.download_button(
-    "Download Polyp Findings as CSV file",
-    csv,
-    "file.csv",
-    "text/csv",
-    key='download-csv'
+    def data_exporter(polyp_summary, screening_information):
+        with pd.ExcelWriter("gi_calc_output.xlsx") as writer:
+            polyp_summary.to_excel(writer, sheet_name="Polyp Summary", index=False)
+            df_app.to_excel(writer, sheet_name="Screening Information", index=False)
+        print('gi_calc_output.xlsx downloaded')
+    st.button(
+    "Download findings and screening information",
+    on_click=data_exporter,
+    kwargs={"polyp_summary": polyp_summary,
+            "screening_information": df_app}
     )
+    # st.download_button(
+    # "Download Polyp Findings as CSV file",
+    # csv,
+    # "file.csv",
+    # "text/csv",
+    # key='download-csv'
+    # )
 
 st.markdown("For any questions/feedback/collaboration inquiries, please contact V² Labs at <thev2labs@gmail.com>.")
