@@ -30,8 +30,6 @@ credentials = {
 }
 gc = gspread.service_account_from_dict(credentials)
 
-st.set_page_config(layout='wide')
-
 # initialize state variables
 if "summary" not in st.session_state:
     st.session_state["summary"] = ""
