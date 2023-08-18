@@ -6,6 +6,7 @@ import gspread
 from PIL import Image
 from io import BytesIO
 from pyxlsb import open_workbook as open_xlsb
+import pandas as pd
 
 # GPT
 openai.api_key = os.getenv('OPENAI_KEY')
@@ -29,6 +30,8 @@ credentials = {
 }
 gc = gspread.service_account_from_dict(credentials)
 
+st.set_page_config(layout='wide')
+
 # initialize state variables
 if "summary" not in st.session_state:
     st.session_state["summary"] = ""
@@ -37,7 +40,6 @@ if "json" not in st.session_state:
 if "polyps_table" not in st.session_state:
     st.session_state["polyps_table"] = pd.DataFrame()
 
-    
 # CSS to inject contained in a string
 hide_table_row_index = """
             <style>
