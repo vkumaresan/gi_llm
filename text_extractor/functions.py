@@ -26,7 +26,7 @@ Input text: ```{prompt}```
     try:
         messages = [{"role": "user", "content": json_prompt}]
         output_json = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4",
                 messages=messages,
                 temperature=0
             ).choices[0].message["content"]
@@ -72,7 +72,7 @@ Input text: ```{prompt}```
     try:
         messages = [{"role": "user", "content": final_prompt}]
         st.session_state["summary"] = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4",
             messages=messages,
             temperature=0
         ).choices[0].message["content"]
@@ -138,7 +138,7 @@ If multiple polyps are found in a location, output a json for each polyp.
     try:
         messages = [{"role": "user", "content": final_prompt[0].content}]
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4",
             messages=messages,
             temperature=0
         ).choices[0].message["content"]
@@ -154,51 +154,63 @@ If multiple polyps are found in a location, output a json for each polyp.
 def summarize_using_gpt_one_prompt(prompt):
     # Combine JSON creation and recommendation into one prompt
     final_prompt = f"""
-  Your task is to provide the recommended screening colonoscopy interval \
-  from the colonoscopy and pathology findings. 
+  You are a machine learning scientist tasked with creating a screening colonoscopy interval. There are 5 types of polyps (tubular adenomas, sessile serrated polyps, and hyperplastic polyps, traditional serrated adenoma, and tubulovillous adenoma). Each polyp has a certain set of step by step instructions and rules as listed below.
+Using the example below, list the screening interval listed for each example. Remember, if a polyp type is not in the example, then you don't need to apply the step by step instructions and rules. If there are multiple polyps in the example, your final output should list the SHORTEST screening interval after your calculations.
 
-  First, extract size, location, and type for all polyps, using the colonoscopy and pathology text. Use the location of the polyp as the
-  link between the colonoscopy and pathology text. 
+Example: {prompt}
 
-  The input text is listed below, delimited by triple backticks.
-  Input text: ```{prompt}```
-
-  Format the output as a JSON.
-
-  Next, use the following rules, delimited by single backticks, to determine the screening colonoscopy interval.  
-  There are several features of interest including: Number of polyps, type of polyp, size of polyps, histology of polyp. 
-  The recommended screening interval is the smallest interval recommended that can be applied to that specific situation. 
-  If multiple rules apply, the recommended screening interval is the smallest interval recommended that can be applied to that specific situation. 
-  If no rules apply, output "ERROR."
-
-  Rules:
-  `Tubular Adenomas
-  Rule 1: If there are more than 10 tubular adenomas of any size, repeat colonoscopy in 1 year. 
-  Rule 2: If there are 1-2 tubular adenomas and each are less than 10 mm in size, repeat colonoscopy in 7-10 years. 
-  Rule 3: If there are 3-4 tubular adenomas, and each are less than 10 mm in size, repeat colonoscopy in 3-5 years. 
-  Rule 4: If there are 5-10 tubular adenomas of any size, repeat colonoscopy in 3 years. 
-  Rule 5: If there are any number of tubular adenomas greater than or equal to 10 mm in size, repeat colonoscopy in 3 years. 
-  Rule 6: If there are any number of tubular adenomas of any size with villous histology, repeat colonoscopy in 3 years. 
-  Rule 7: If there are any number of tubular adenomas of any size with tubulovillous histology, repeat colonoscopy in 3 years. 
-  Rule 8: If there are any number of tubular adenomas of any size with high grade dysplasia hiotology, repeat colonoscopy in 3 years. 
-
-  Sessile Serrated Polyps: 
-  Rule 9: If there are 1-2 sessile serrated polyps, and each are less than 10 mm in size, repeat colonscopy in 5-10 years. 
-  Rule 10: If there are 3-4 sessile serrated polyps, and each are less than 10 mm in size, repeat colonoscopy in 3-5 years. 
-  Rule 11: If there are 5-10 sessile serrated polyps of any size, repeat colonoscopy in 3 years. 
-  Rule 12: If there are any number of sessile serrated polyps greater than or equal to 10 mm, repeat colonoscopy in 3 years. 
-
-  Hyperplastic Polyps: 
-  Rule 13: If there are less than or equal to 20 hyperplastic polyps, and each are less than 10 mm in size, repeat colonoscopy in 10 years. 
-  Rule 14: If there are any number of hyperplastic polyps greater than or equal to 10 mm in size, repeat colonoscopy in 3-5 years.
-  `
-
-  Provide the recommended colonoscopy screening interval for the input text in at most 30 words. 
+Tubular adenoma:
+Create a json of the following object (Tubular adenomas) with these parameters: Polyp location, polyp size, polyp type, polyp histology (if present).
+ Based on [output 1], create a JSON with this object & Parameters. "tubular_adenoma": {{ "size_greater_than_or_equal_10mm": true, "number_of_tubular_adenomas" }}
+Based on [output 2] Output the answer, in the following format: "1,N"
+The next step is to create a sentence based on the json parameters. For example, if the parameters are (3, Y) the sentence would be: “There a 3 hyperplastic polyps. At least one of the hyperplastic polyp is greater than or equal to 10 mm.” Create a similar sentence with these parameters: [Output #3]
+Which rule applies to this example “[output #4]?
+Rule 1: If there are more than 10 tubular adenomas of any size, repeat colonoscopy in 1 year.
+Rule 2: If there are 1-2 tubular adenomas and each are less than 10 mm in size, repeat colonoscopy in 7-10 years.
+Rule 3: If there are 3-4 tubular adenomas, and each are less than 10 mm in size, repeat colonoscopy in 3-5 years.
+Rule 4: If there are 5-10 tubular adenomas of any size, repeat colonoscopy in 3 years.
+Rule 5: If there are any number of tubular adenomas greater than or equal to 10 mm in size, repeat colonoscopy in 3 years.
+Rule 6: If there are any number of tubular adenomas with villous histology or high grade dysplasia, repeat colonoscopy in 3 years.
+What is the screening colonoscopy interval based on [output 5]?
+Sessile serrated polyps:
+Create a json of the following object (Sessile Serrated Polyps) with these parameters: Polyp location, polyp size, polyp type
+Based on [output 1], create a JSON with this object & Parameters. "sessile_serrated_polyps": {{ "size_greater_than_or_equal_10mm": true "number_of_sessile_serrated_polyps" }}
+Based on [output 2] Output the answer, in the following format: "1,N"
+The next step is to create a sentence based on the json parameters. For example, if the parameters are (3, Y) the sentence would be: “There a 3 sessile serrated polyp. At least one of the sessile serrated polyp is greater than or equal to 10 mm.”
+Create a similar sentence with these parameters: [Output #3]
+Which rule applies to this example “[output #4]?
+Rule 1: If there are 1-2 sessile serrated polyps, and each are less than 10 mm in size, repeat colonoscopy in 5-10 years.
+Rule 2: If there are 3-4 sessile serrated polyps, and each are less than 10 mm in size, repeat colonoscopy in 3-5 years.
+Rule 3: If there are 5-10 sessile serrated polyps of any size, repeat colonoscopy in 3 years.
+Rule 4: If there are any number of sessile serrated polyps greater than or equal to 10 mm, repeat colonoscopy in 3 years.
+Rule 5: if there are any number of sessile serrated polyps with dysplasia, repeat colonoscopy in 3 years.
+What is the screening colonoscopy interval based on [output 5]?
+Hyperplastic polyps
+Create a json of the following object (Hyperplastic Polyps) with these parameters: Polyp location, polyp size, polyp type
+Based on [output 1], create a JSON with this object & Parameters. "hyperplastic_polyps": {{ "size_greater_than_or_equal_10mm": true "number_of_hyperplastic_polyps" }}
+Based on [output 2] Output the answer, in the following format: "1,N" The next step is to create a sentence based on the json parameters. For example, if the parameters are (3, Y) the sentence would be: “There a 3 hyperplastic polyps. At least one of the hyperplastic polyp is greater than or equal to 10 mm.”
+Create a similar sentence with these parameters: [Output #3]
+Which rule applies to this example “[output #4]?
+Rule 1: If there are less than or equal to 20 hyperplastic polyps, and each are less than 10 mm in size, repeat colonoscopy in 10 years.
+Rule 2: If there are any number of hyperplastic polyps greater than or equal to 10 mm in size, repeat colonoscopy in 3-5 years.
+What is the screening colonoscopy interval based on [output 5]?
+Traditional Serrated Polyps
+Create a json of the following object (Traditional Serrated Polyps) with these parameters: Polyp location, polyp size, polyp type
+Based on [output 1], create a JSON with this object & Parameters. {{ "size_greater_than_or_equal_10mm": true , "number_of_traditional_serrated_polyps" }}
+Which rule applies to this example “[output #2]?
+Rule 1: If there are any number of traditional_serrated_polyps, repeat colonoscopy in 3 years.
+What is the screening colonoscopy interval based on [output 3]?
+Tubulovillous adenoma
+Create a json of the following object (Tubulovillous adenoma) with these parameters: Polyp location, polyp size, polyp type
+Based on [output 1], create a JSON with this object & Parameters. {{"size_greater_than_or_equal_10mm": true, "number_of_tubulovillous_adenoma" }}
+Which rule applies to this example “[output #2]?
+Rule 1: If there are any number of tubulovillous_adenoma, repeat colonoscopy in 3 years.
+What is the screening colonoscopy interval based on [output 3]?
 """
     try:
         messages = [{"role": "user", "content": final_prompt}]
-        st.session_state["summary"] = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+        st.session_state["explanation"] = openai.ChatCompletion.create(
+            model="gpt-4",
             messages=messages,
             temperature=0
         ).choices[0].message["content"]

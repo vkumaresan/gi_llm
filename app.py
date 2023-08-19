@@ -9,10 +9,7 @@ from pyxlsb import open_workbook as open_xlsb
 import pandas as pd
 
 # GPT
-openai.api_key = os.getenv('OPENAI_KEY')
-
-# Google
-#os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'experimenting-297418-9266c3a6d9ee.json'
+openai.api_key = os.environ["OPENAI_KEY"]
 
 # Google Sheets for export
 credentials = {
@@ -37,6 +34,8 @@ if "json" not in st.session_state:
     st.session_state["json"] = ""
 if "polyps_table" not in st.session_state:
     st.session_state["polyps_table"] = pd.DataFrame()
+if "explanation" not in st.session_state:
+    st.session_state['explanation'] = ""
 
 # CSS to inject contained in a string
 hide_table_row_index = """
@@ -67,18 +66,18 @@ st.title("Colonoscopy Screening Interval Calculator")
 
 st.markdown("This tool allows you to enter findings from colonoscopy and pathology reports and receive the guideline-recommended screening interval for that patient.")
 
-# with st.sidebar:
-#     st.sidebar.markdown("This is an experimental tool that is still in development, and as such, results should be taken with caution as adjustments and improvements are still being made.")
-#     st.sidebar.markdown("IMPORTANT: At this moment, we ask that you do not enter actual patient health information in this tool. Instead, below are examples of synthetic data that you can modify and test.")
+with st.expander("Directions"):
+    st.markdown("This is an experimental tool that is still in development, and as such, results should be taken with caution as adjustments and improvements are still being made.")
+    st.markdown("IMPORTANT: At this moment, we ask that you do not enter actual patient health information in this tool. Instead, below are examples of synthetic data that you can modify and test.")
 
-#     example_input_text = pd.DataFrame([['A solitary 5 mm polyp was excised using a hot biopsy forceps from the cecum.', 
-#                                         'Cecum: Tubular adenoma.'],
-#                                     ['One 11 mm polyp was removed with a cold snare from the ascending colon. One 7 mm polyp was removed from the sigmoid colon. One 9 mm polyp was removed from the rectum.', 
-#                                      'Ascending Colon: Tubular adenoma. Sigmoid Colon: Tubular adenoma. Rectum: Tubular adenoma.'],
-#                                     ['Two polyps were removed; one 5 mm polyp from the cecum, and a 9 mm polyp from the rectum.', 
-#                                      'Cecum: tubular adenoma. Rectum: hyperplastic polyp.']], 
-#                                     columns=['Example Colonoscopy Text', 'Example Pathology Text'])
-#     st.table(example_input_text)
+    example_input_text = pd.DataFrame([['A solitary 5 mm polyp was excised using a hot biopsy forceps from the cecum.', 
+                                        'Cecum: Tubular adenoma.'],
+                                    ['One 11 mm polyp was removed with a cold snare from the ascending colon. One 7 mm polyp was removed from the sigmoid colon. One 9 mm polyp was removed from the rectum.', 
+                                     'Ascending Colon: Tubular adenoma. Sigmoid Colon: Tubular adenoma. Rectum: Tubular adenoma.'],
+                                    ['Two polyps were removed; one 5 mm polyp from the cecum, and a 9 mm polyp from the rectum.', 
+                                     'Cecum: tubular adenoma. Rectum: hyperplastic polyp.']], 
+                                    columns=['Example Colonoscopy Text', 'Example Pathology Text'])
+    st.table(example_input_text)
 
 with st.expander("Evidence"):
     st.markdown("""
@@ -182,6 +181,11 @@ if output_text != '':
     st.download_button(label='📥 Download findings and screening information',
                                 data=df_xlsx ,
                                 file_name= 'gi_calc_output.xlsx')
+    
+with st.expander("Model Output Explanation"):
+    if st.session_state["summary"] != "":
+        summarize_using_gpt_one_prompt(prompt= 'Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text)
+        output_text = st.text_area(label='', value=st.session_state["explanation"], height=100)
 
 st.markdown("For any questions/feedback/collaboration inquiries, please contact V² Labs at <thev2labs@gmail.com>.")
 # Logo
