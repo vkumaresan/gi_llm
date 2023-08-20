@@ -94,17 +94,18 @@ size_schema = ResponseSchema(name="size",
 location_schema = ResponseSchema(name="location",
                                       description="Where was the polyp found?\
                                       Output the value as a string.")
-type_schema = ResponseSchema(name="type",
-                                    description="What was the type of the polyp?\
-                                    Output the value as a string.")
 histology_schema = ResponseSchema(name="histology",
-                                    description="What was the histology of the polyp? \
-                                    Output as a string. Histology will either be high-grade dysplasia, \
-                                    low-grade dysplasia, dysplasia, villous, tubulovillous, or not applicable.")
+                                    description="What was the histology of the polyp?\
+                                    Output as a string.")
+dysplasia_schema = ResponseSchema(name="dysplasia",
+                                    description="What was the dysplasia of the polyp?\
+                                    Histology will either be high-grade dysplasia, \
+                                    low-grade dysplasia, dysplasia, villous, tubulovillous, or not applicable." \
+                                    )
 response_schemas = [size_schema, 
                     location_schema,
-                    type_schema,
-                    histology_schema]
+                    histology_schema,
+                    dysplasia_schema]
 output_parser = StructuredOutputParser.from_response_schemas(response_schemas)
 format_instructions = output_parser.get_format_instructions()
 
@@ -118,11 +119,11 @@ and output the number and units.
 location: Extract the location of the polyp\
 and output as a string.
 
-type: Extract the type of the polyp\
+histology: Extract the histology of the polyp\
 and output as a string.
 
-histology: Extract the grade of the dysplasia \
-and output as a string.
+dysplasia: Extract the grade of the dysplasia (if present) \
+and output as a string. If not present, output 'No dysplasia found'
 
 text: {text}
 
@@ -149,6 +150,7 @@ If multiple polyps are found in a location, output a json for each polyp.
         # Get polyp table
         st.session_state["polyps_table"] = polyp_table_formatter(response)
     except:
+        st.write(clinical_rec_calc(response)) 
         st.write('There was an error')
 
 def summarize_using_gpt_one_prompt(prompt):
@@ -311,11 +313,11 @@ def clinical_rec_calc(json_response):
     greater_than_10mm_count_adenoma = 0
     greater_than_10mm_count_hyperplastic = 0
     greater_than_10mm_count_sessile = 0
-    adenoma_histology_count = 0
-    sessile_histology_count = 0
+    adenoma_dysplasia_count = 0
+    sessile_dysplasia_count = 0
 
-    histology_types_adenoma = ['high-grade', 'villous', 'tubulovillous']
-    histology_types_sessile = ['high-grade', 'low-grade', 'dysplasia', 'villous', 'tubulovillous']
+    dysplasia_types_adenoma = ['high-grade', 'villous', 'tubulovillous']
+    dysplasia_types_sessile = ['high-grade', 'low-grade', 'dysplasia', 'villous', 'tubulovillous']
     # Get JSONs
     matches = re.findall('\{(?:[^{}])*\}', json_response.replace('\n', '').replace('\t', ''))
     for match in matches:
@@ -324,14 +326,14 @@ def clinical_rec_calc(json_response):
 
         ### Extract variables and add to list
         polyp_size = polyp_dict.get('size')
-        polyp_location = polyp_dict.get('size').lower()
-        polyp_type = polyp_dict.get('type').lower()
+        polyp_location = polyp_dict.get('location').lower()
         polyp_histology = polyp_dict.get('histology').lower()
+        polyp_dysplasia = polyp_dict.get('dysplasia').lower()
 
         # Adenoma
-        if fuzz.partial_token_sort_ratio("adenoma", polyp_type) > 50:
+        if fuzz.partial_token_sort_ratio("adenoma", polyp_histology) > 50:
             # check for traditional
-            if fuzz.partial_token_sort_ratio("traditional", polyp_type) > 50:
+            if fuzz.partial_token_sort_ratio("traditional", polyp_histology) > 50:
                 traditional_count += 1
             adenoma_count += 1
             # >= 10mm 
@@ -343,12 +345,12 @@ def clinical_rec_calc(json_response):
             if 'cm' in polyp_size:
                 greater_than_10mm_count_adenoma += 1  
             # histology
-            for t in histology_types_adenoma:
-                if (fuzz.partial_token_sort_ratio(t, polyp_type) > 75) or (fuzz.partial_token_sort_ratio(t, polyp_histology) > 75):
-                    adenoma_histology_count += 1
+            for t in dysplasia_types_adenoma:
+                if (fuzz.partial_token_sort_ratio(t, polyp_dysplasia) > 75) or (fuzz.partial_token_sort_ratio(t, polyp_dysplasia) > 75):
+                    adenoma_dysplasia_count += 1
 
         # Hyperplastic
-        if fuzz.partial_token_sort_ratio("hyperplastic", polyp_type) > 50:
+        if fuzz.partial_token_sort_ratio("hyperplastic", polyp_histology) > 50:
             hyperplastic_count += 1
             # >= 10mm 
             sizes = [int(i) for i in polyp_size.split() if i.isdigit()]
@@ -359,7 +361,7 @@ def clinical_rec_calc(json_response):
             if 'cm' in polyp_size:
                 greater_than_10mm_count_hyperplastic += 1
         # Sessile
-        if fuzz.partial_token_sort_ratio("sessile", polyp_type) > 50:
+        if fuzz.partial_token_sort_ratio("sessile", polyp_histology) > 50:
             sessile_count += 1
             # >= 10mm 
             sizes = [int(i) for i in polyp_size.split() if i.isdigit()]
@@ -369,10 +371,10 @@ def clinical_rec_calc(json_response):
                 # cm
             if 'cm' in polyp_size:
                 greater_than_10mm_count_sessile += 1
-            for t in histology_types_sessile:
-                if (fuzz.partial_token_sort_ratio(t, polyp_type) > 50) or (fuzz.partial_token_sort_ratio(t, polyp_histology) > 50):
+            for t in dysplasia_types_sessile:
+                if (fuzz.partial_token_sort_ratio(t, polyp_dysplasia) > 50) or (fuzz.partial_token_sort_ratio(t, polyp_dysplasia) > 50):
                     # add if any dysplasia
-                    sessile_histology_count += 1
+                    sessile_dysplasia_count += 1
         
     # Calculate clinical recommendation
     clinical_recommendation = []
@@ -389,7 +391,7 @@ def clinical_rec_calc(json_response):
                 clinical_recommendation.append('3-5 years')
             else:
                 clinical_recommendation.append('7-10 years')
-        if adenoma_histology_count >= 1:
+        if adenoma_dysplasia_count >= 1:
             clinical_recommendation.append('3 years')
     # Hyperplastic Loop
     if hyperplastic_count >= 1:
@@ -410,7 +412,7 @@ def clinical_rec_calc(json_response):
                 clinical_recommendation.append('3-5 years') 
             else:
                 clinical_recommendation.append('5-10 years')
-        if sessile_histology_count >= 1:
+        if sessile_dysplasia_count >= 1:
             clinical_recommendation.append('3 years')
     # Traditional Loop
     if traditional_count >= 1:
@@ -512,14 +514,14 @@ def polyp_table_formatter(json_response):
     polyp_count = 0
     polyp_size = ''
     polyp_location = ''
-    polyp_type = ''
     polyp_histology = ''
+    polyp_dysplasia = ''
 
     for match in matches:
         polyp_dict = output_parser.parse(match)
 
         # check against previous polyp to see if we need to append a new row or add to previous count
-        if ((polyp_dict.get('size') == polyp_size) & (polyp_dict.get('location') == polyp_location) & (polyp_dict.get('type') == polyp_type) & (polyp_dict.get('histology') == polyp_histology)):
+        if ((polyp_dict.get('size') == polyp_size) & (polyp_dict.get('location') == polyp_location) & (polyp_dict.get('histology') == polyp_histology) & (polyp_dict.get('dysplasia') == polyp_dysplasia)):
             polyp_count += 1
             final_polyps_output.at[i, 'Polyp Count'] = str(int(polyp_count))
         else:
@@ -528,15 +530,15 @@ def polyp_table_formatter(json_response):
             final_polyps_output.at[i, 'Polyp Count'] = str(int(polyp_count))
             final_polyps_output.at[i, 'Polyp Size'] = polyp_dict.get('size')
             final_polyps_output.at[i, 'Polyp Location'] = polyp_dict.get('location').lower()
-            final_polyps_output.at[i, 'Polyp Type'] = polyp_dict.get('type').lower()
             final_polyps_output.at[i, 'Polyp Histology'] = polyp_dict.get('histology').lower()
+            final_polyps_output.at[i, 'Polyp Dysplasia'] = polyp_dict.get('dysplasia').lower()
         
 
         ### Save variables
         polyp_size = polyp_dict.get('size')
         polyp_location = polyp_dict.get('location').lower()
-        polyp_type = polyp_dict.get('type').lower()
         polyp_histology = polyp_dict.get('histology').lower()
+        polyp_dysplasia = polyp_dict.get('dysplasia').lower()
     return final_polyps_output
 
         

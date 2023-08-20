@@ -139,6 +139,9 @@ st.button(
     kwargs={"prompt": 'Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text},
     )
 
+st.divider()
+st.subheader("Results")
+
 # configure text area to populate with current state of summary
 st.markdown('Polyp Summary')
 
@@ -182,10 +185,11 @@ if output_text != '':
                                 data=df_xlsx ,
                                 file_name= 'gi_calc_output.xlsx')
     
-with st.expander("Model Output Explanation"):
-    if st.session_state["summary"] != "":
-        summarize_using_gpt_one_prompt(prompt= 'Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text)
-        output_text = st.text_area(label='', value=st.session_state["explanation"], height=100)
+with st.spinner('Loading model output explanation...'):
+    with st.expander("Model Output Explanation"):
+        if st.session_state["summary"] != "":
+            summarize_using_gpt_one_prompt(prompt= 'Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text)
+            output_text = st.text_area(label='', value=st.session_state["explanation"], height=100)
 
 st.markdown("For any questions/feedback/collaboration inquiries, please contact V² Labs at <thev2labs@gmail.com>.")
 # Logo
