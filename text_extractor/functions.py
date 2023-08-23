@@ -109,6 +109,7 @@ response_schemas = [size_schema,
 output_parser = StructuredOutputParser.from_response_schemas(response_schemas)
 format_instructions = output_parser.get_format_instructions()
 
+@st.cache_data(show_spinner=False)
 def summarize_using_gpt_JSON(prompt):
     prompt_template = """\
 For the following text, extract the following information for each polyp:
@@ -146,68 +147,65 @@ If multiple polyps are found in a location, output a json for each polyp.
         # Save JSON output
         st.session_state["json"] = response
         # Get clinical recommendation from JSON using helper function
-        st.session_state["summary"] = clinical_rec_calc(response)
+        #st.session_state["summary"] = clinical_rec_calc(response)
         # Get polyp table
         st.session_state["polyps_table"] = polyp_table_formatter(response)
     except:
         st.write(clinical_rec_calc(response)) 
         st.write('There was an error')
 
+@st.cache_data(show_spinner=False)
 def summarize_using_gpt_one_prompt(prompt):
     # Combine JSON creation and recommendation into one prompt
     final_prompt = f"""
-  You are a machine learning scientist tasked with creating a screening colonoscopy interval. There are 5 types of polyps (tubular adenomas, sessile serrated polyps, and hyperplastic polyps, traditional serrated adenoma, and tubulovillous adenoma). Each polyp has a certain set of step by step instructions and rules as listed below.
-Using the example below, list the screening interval listed for each example. Remember, if a polyp type is not in the example, then you don't need to apply the step by step instructions and rules. If there are multiple polyps in the example, your final output should list the SHORTEST screening interval after your calculations.
+  You are a gastroenterologists determining the risk-stratified screening colonoscopy interval. The rules to follow are below. Remember these rules and recall them by the term "CRC Screening Rules"
 
-Example: {prompt}
+CRC Screening Rules
 
-Tubular adenoma:
-Create a json of the following object (Tubular adenomas) with these parameters: Polyp location, polyp size, polyp type, polyp histology (if present).
- Based on [output 1], create a JSON with this object & Parameters. "tubular_adenoma": {{ "size_greater_than_or_equal_10mm": true, "number_of_tubular_adenomas" }}
-Based on [output 2] Output the answer, in the following format: "1,N"
-The next step is to create a sentence based on the json parameters. For example, if the parameters are (3, Y) the sentence would be: “There a 3 hyperplastic polyps. At least one of the hyperplastic polyp is greater than or equal to 10 mm.” Create a similar sentence with these parameters: [Output #3]
-Which rule applies to this example “[output #4]?
-Rule 1: If there are more than 10 tubular adenomas of any size, repeat colonoscopy in 1 year.
-Rule 2: If there are 1-2 tubular adenomas and each are less than 10 mm in size, repeat colonoscopy in 7-10 years.
-Rule 3: If there are 3-4 tubular adenomas, and each are less than 10 mm in size, repeat colonoscopy in 3-5 years.
-Rule 4: If there are 5-10 tubular adenomas of any size, repeat colonoscopy in 3 years.
-Rule 5: If there are any number of tubular adenomas greater than or equal to 10 mm in size, repeat colonoscopy in 3 years.
-Rule 6: If there are any number of tubular adenomas with villous histology or high grade dysplasia, repeat colonoscopy in 3 years.
-What is the screening colonoscopy interval based on [output 5]?
-Sessile serrated polyps:
-Create a json of the following object (Sessile Serrated Polyps) with these parameters: Polyp location, polyp size, polyp type
-Based on [output 1], create a JSON with this object & Parameters. "sessile_serrated_polyps": {{ "size_greater_than_or_equal_10mm": true "number_of_sessile_serrated_polyps" }}
-Based on [output 2] Output the answer, in the following format: "1,N"
-The next step is to create a sentence based on the json parameters. For example, if the parameters are (3, Y) the sentence would be: “There a 3 sessile serrated polyp. At least one of the sessile serrated polyp is greater than or equal to 10 mm.”
-Create a similar sentence with these parameters: [Output #3]
-Which rule applies to this example “[output #4]?
-Rule 1: If there are 1-2 sessile serrated polyps, and each are less than 10 mm in size, repeat colonoscopy in 5-10 years.
-Rule 2: If there are 3-4 sessile serrated polyps, and each are less than 10 mm in size, repeat colonoscopy in 3-5 years.
-Rule 3: If there are 5-10 sessile serrated polyps of any size, repeat colonoscopy in 3 years.
-Rule 4: If there are any number of sessile serrated polyps greater than or equal to 10 mm, repeat colonoscopy in 3 years.
-Rule 5: if there are any number of sessile serrated polyps with dysplasia, repeat colonoscopy in 3 years.
-What is the screening colonoscopy interval based on [output 5]?
-Hyperplastic polyps
-Create a json of the following object (Hyperplastic Polyps) with these parameters: Polyp location, polyp size, polyp type
-Based on [output 1], create a JSON with this object & Parameters. "hyperplastic_polyps": {{ "size_greater_than_or_equal_10mm": true "number_of_hyperplastic_polyps" }}
-Based on [output 2] Output the answer, in the following format: "1,N" The next step is to create a sentence based on the json parameters. For example, if the parameters are (3, Y) the sentence would be: “There a 3 hyperplastic polyps. At least one of the hyperplastic polyp is greater than or equal to 10 mm.”
-Create a similar sentence with these parameters: [Output #3]
-Which rule applies to this example “[output #4]?
-Rule 1: If there are less than or equal to 20 hyperplastic polyps, and each are less than 10 mm in size, repeat colonoscopy in 10 years.
-Rule 2: If there are any number of hyperplastic polyps greater than or equal to 10 mm in size, repeat colonoscopy in 3-5 years.
-What is the screening colonoscopy interval based on [output 5]?
-Traditional Serrated Polyps
-Create a json of the following object (Traditional Serrated Polyps) with these parameters: Polyp location, polyp size, polyp type
-Based on [output 1], create a JSON with this object & Parameters. {{ "size_greater_than_or_equal_10mm": true , "number_of_traditional_serrated_polyps" }}
-Which rule applies to this example “[output #2]?
-Rule 1: If there are any number of traditional_serrated_polyps, repeat colonoscopy in 3 years.
-What is the screening colonoscopy interval based on [output 3]?
-Tubulovillous adenoma
-Create a json of the following object (Tubulovillous adenoma) with these parameters: Polyp location, polyp size, polyp type
-Based on [output 1], create a JSON with this object & Parameters. {{"size_greater_than_or_equal_10mm": true, "number_of_tubulovillous_adenoma" }}
-Which rule applies to this example “[output #2]?
-Rule 1: If there are any number of tubulovillous_adenoma, repeat colonoscopy in 3 years.
-What is the screening colonoscopy interval based on [output 3]?
+10 Years:
+Normal Colonoscopy with no polyps biopsied
+There are less than or equal to 20 total hyperplastic polyps AND each polyp is less than 10 mm in size
+7-10 years:
+There are 1-2 tubular adenomas AND each polyp is less than 10 mm in size
+5-10 years:
+There are 1-2 sessile serrated polyps AND each polyp is less than 10 mm in size
+3-5 years:
+There are 3-4 tubular adenomas AND each polyp is less than 10 mm in size
+There are 3-4 sessile serrated polyps AND each polyp is less than 10 mm in size
+There are any number of hyperplastic polyps that are greater than of equal to 10 mm in size
+3 years:
+There are 5-10 tubular adenomas
+There are 5-10 sessile serrated polyps
+There are any tubular adenomas greater than or equal to 10 mm
+There are any sessile serrated polyps greater than or equal to 10 mm
+There are any tubular adenomas with villous histology
+There are any tubulovillous adenomas
+There are any tubular adenomas with high grade dysplasia
+There are any sessile serrated polyps with dysplasia
+There are any traditional serrated adenoma
+1 year:
+There are more than 10 tubular adenomas
+
+Using CRC Screening Rules, what is the interval in this example?
+
+{prompt}
+
+Work through your answer step by step.
+
+Step 1: Identify the types and sizes of polyps found in the colonoscopy.
+
+Step 2: Cross-reference each of these findings with the CRC Screening Rules.
+
+Step 3: Determine the shortest interval among the categories the patient falls into.
+
+Output your final results as one of the following options, without any additional text:
+
+  '1 year'
+  '3 years'
+  '3-5 years'
+  '5-10 years'
+  '7-10 years'
+  '10 years'
 """
     try:
         messages = [{"role": "user", "content": final_prompt}]
@@ -216,6 +214,13 @@ What is the screening colonoscopy interval based on [output 3]?
             messages=messages,
             temperature=0
         ).choices[0].message["content"]
+        # Use regex to parse out the final recommendation
+        matches = [m.group(1) for m in re.finditer("'(.*]*)'", st.session_state["explanation"])]
+        print(matches)
+        if len(matches) != 0:
+            st.session_state["summary"] = matches[0]
+        else:
+            st.session_state["summary"] = st.session_state["explanation"]
     except:
         st.write('There was an error')
 

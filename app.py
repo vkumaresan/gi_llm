@@ -139,20 +139,43 @@ st.button(
     kwargs={"prompt": 'Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text},
     )
 
-st.divider()
-st.subheader("Results")
+agree_or_disagree = ""
+disagree_reason = ""
+# Results section
+if st.session_state["json"] != "":
+    st.divider()
+    st.subheader("Results")
 
-# configure text area to populate with current state of summary
-st.markdown('Polyp Summary')
+    # configure text area to populate with current state of summary
+    st.markdown('Polyp Summary')
 
-# Display output table
-st.table(st.session_state["polyps_table"])
+    # Display output table
+    st.table(st.session_state["polyps_table"])
 
-# Display output recommendation
-output_text = st.text_area(label='Recommended Screening Colonoscopy Interval', value=st.session_state["summary"], height=50)
+    with st.spinner('Loading screening interval recommendation...'):
+        with st.expander("Model Output Explanation"):
+            if st.session_state["json"] != "":
+                summarize_using_gpt_one_prompt(prompt= 'Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text)
+                output_text = st.text_area(label='', value=st.session_state["explanation"], height=100)
+    # Display output recommendation
+    output_text = st.text_area(label='Recommended Screening Colonoscopy Interval', value=st.session_state["summary"], height=50)
+    # Button for human feedback
+    with st.form("my_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.checkbox('Agree'):
+                agree_or_disagree = "Agree"
+                disagree_reason = ""
+        with col2:
+            if st.checkbox('Disagree'):
+                agree_or_disagree = "Disagree"
+            disagree_reason = st.text_input(label='Please provide feedback on why you disagree:', value="")
 
-# Export data to Google Sheet
-if output_text != '':
+        # Every form must have a submit button.
+        submitted = st.form_submit_button("Submit")
+        if submitted:
+            st.write("Feedback submitted!")
+
     sh = gc.open_by_key('19KBn8TMXqluLF1f8QSpc_wWqSXrv1W3tga4qitmQJiU')
     worksheet = sh.get_worksheet(0)
     # Get current values from Google Sheet and append on output table
@@ -160,12 +183,13 @@ if output_text != '':
     data = {'Colonoscopy Text': [input_colon_text], 
             'Pathology Text': [input_path_text],
             'JSON': [st.session_state["json"]], 
-            'Recommended Interval': [output_text]}
+            'Recommended Interval': [output_text],
+            'Agree or Disagree': [agree_or_disagree],
+            'Disagree Reason': [disagree_reason]}
     df_app = pd.DataFrame(data=data)
     df_combined = pd.concat([df_sheet, df_app])
     df_combined = df_combined.fillna('')
     worksheet.update([df_combined.columns.values.tolist()] + df_combined.values.tolist())
-
     # Button to allow user to download output table as CSV
     if "polyps_table" not in st.session_state:
         st.session_state["polyps_table"] = pd.DataFrame()
@@ -184,12 +208,6 @@ if output_text != '':
     st.download_button(label='📥 Download findings and screening information',
                                 data=df_xlsx ,
                                 file_name= 'gi_calc_output.xlsx')
-    
-with st.spinner('Loading model output explanation...'):
-    with st.expander("Model Output Explanation"):
-        if st.session_state["summary"] != "":
-            summarize_using_gpt_one_prompt(prompt= 'Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text)
-            output_text = st.text_area(label='', value=st.session_state["explanation"], height=100)
 
 st.markdown("For any questions/feedback/collaboration inquiries, please contact V² Labs at <thev2labs@gmail.com>.")
 # Logo
