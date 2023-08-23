@@ -125,31 +125,29 @@ with st.expander("Methods"):
         
     """)
 
-st.divider()
-col1, col2 = st.columns(2)
+with st.form("run_summary"):
+    col1, col2 = st.columns(2)
 
-with col1:
-    input_colon_text = st.text_area(label='Enter colonoscopy impression:', value="", height=150)
-with col2:
-    input_path_text = st.text_area(label='Enter pathology impression:', value="", height=150)
-
-st.button(
-    "Submit",
-    on_click=summarize_using_gpt_JSON,
-    kwargs={"prompt": 'Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text},
-    )
-
+    with col1:
+        input_colon_text = st.text_area(label='Enter colonoscopy impression:', value="", height=150)
+    with col2:
+        input_path_text = st.text_area(label='Enter pathology impression:', value="", height=150)
+    submitted_run_button = st.form_submit_button(
+        "Submit"
+        )
+if submitted_run_button:
+    summarize_using_gpt_JSON(prompt = 'Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text)
 agree_or_disagree = ""
 disagree_reason = ""
 # Results section
 if st.session_state["json"] != "":
-    st.divider()
     st.subheader("Results")
 
     # configure text area to populate with current state of summary
     st.markdown('Polyp Summary')
 
     # Display output table
+    st.session_state["polyps_table"] = polyp_table_formatter(st.session_state["json"])
     st.table(st.session_state["polyps_table"])
 
     with st.spinner('Loading screening interval recommendation...'):
@@ -160,7 +158,7 @@ if st.session_state["json"] != "":
     # Display output recommendation
     output_text = st.text_area(label='Recommended Screening Colonoscopy Interval', value=st.session_state["summary"], height=50)
     # Button for human feedback
-    with st.form("my_form"):
+    with st.form("agree_or_disagree"):
         col1, col2 = st.columns(2)
         with col1:
             if st.checkbox('Agree'):

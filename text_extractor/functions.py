@@ -149,7 +149,7 @@ If multiple polyps are found in a location, output a json for each polyp.
         # Get clinical recommendation from JSON using helper function
         #st.session_state["summary"] = clinical_rec_calc(response)
         # Get polyp table
-        st.session_state["polyps_table"] = polyp_table_formatter(response)
+
     except:
         st.write(clinical_rec_calc(response)) 
         st.write('There was an error')
@@ -216,7 +216,6 @@ Output your final results as one of the following options, without any additiona
         ).choices[0].message["content"]
         # Use regex to parse out the final recommendation
         matches = [m.group(1) for m in re.finditer("'(.*]*)'", st.session_state["explanation"])]
-        print(matches)
         if len(matches) != 0:
             st.session_state["summary"] = matches[0]
         else:
