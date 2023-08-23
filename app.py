@@ -136,9 +136,10 @@ with st.form("run_summary"):
         "Submit"
         )
 if submitted_run_button:
-    summarize_using_gpt_JSON(prompt = 'Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text)
+    summarize_using_gpt_JSON(prompt ='Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text)
 agree_or_disagree = ""
 disagree_reason = ""
+print(st.session_state["json"])
 # Results section
 if st.session_state["json"] != "":
     st.subheader("Results")
@@ -159,15 +160,15 @@ if st.session_state["json"] != "":
     output_text = st.text_area(label='Recommended Screening Colonoscopy Interval', value=st.session_state["summary"], height=50)
     # Button for human feedback
     with st.form("agree_or_disagree"):
-        feedback = st.radio(
-            "Please provide feedback on the provided recommendation:",
-            ('','Agree', 'Disagree'))
-        if feedback == 'Agree':
-            agree_or_disagree = "Agree"
-            disagree_reason = ""
-        if feedback == 'Disagree':
-            agree_or_disagree = "Disagree"
-        disagree_reason = st.text_input(label='If you disagree, please let us know how the recommendation can be improved:', value="")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.checkbox('Agree'):
+                agree_or_disagree = "Agree"
+                disagree_reason = ""
+        with col2:
+            if st.checkbox('Disagree'):
+                agree_or_disagree = "Disagree"
+            disagree_reason = st.text_input(label='Please provide feedback on why you disagree:', value="")
 
         # Every form must have a submit button.
         submitted = st.form_submit_button("Submit")
