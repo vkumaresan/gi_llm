@@ -136,6 +136,8 @@ with st.form("run_summary"):
         "Submit"
         )
 if submitted_run_button:
+    # clear cache
+    st.cache_resource.clear()
     summarize_using_gpt_JSON(prompt ='Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text)
 agree_or_disagree = ""
 disagree_reason = ""

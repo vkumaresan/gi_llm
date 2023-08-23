@@ -109,7 +109,7 @@ response_schemas = [size_schema,
 output_parser = StructuredOutputParser.from_response_schemas(response_schemas)
 format_instructions = output_parser.get_format_instructions()
 
-@st.cache_data(show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def summarize_using_gpt_JSON(prompt):
     prompt_template = """\
 For the following text, extract the following information for each polyp:
@@ -154,7 +154,7 @@ If multiple polyps are found in a location, output a json for each polyp.
         st.write(clinical_rec_calc(response)) 
         st.write('There was an error')
 
-@st.cache_data(show_spinner=False)
+@st.cache_resource(show_spinner=False)
 def summarize_using_gpt_one_prompt(prompt):
     # Combine JSON creation and recommendation into one prompt
     final_prompt = f"""
