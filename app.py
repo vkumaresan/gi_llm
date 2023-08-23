@@ -139,7 +139,6 @@ if submitted_run_button:
     summarize_using_gpt_JSON(prompt ='Colonoscopy: ' + input_colon_text + ' ' + 'Pathology Findings: ' + input_path_text)
 agree_or_disagree = ""
 disagree_reason = ""
-print(st.session_state["json"])
 # Results section
 if st.session_state["json"] != "":
     st.subheader("Results")
